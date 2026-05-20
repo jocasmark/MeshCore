@@ -30,7 +30,7 @@ class genericBuzzer
 
     private:
         // gemini's picks:
-        const char *startup_song = "Startup:d=4,o=5,b=160:16c6,16e6,8g6";
+        const char *startup_song = "Startup:d=16,o=5,b=180:4c#6,8c#6,8b,8a,4g,4g,8a,4b,4a,4p";
         const char *shutdown_song = "Shutdown:d=4,o=5,b=100:8g5,16e5,16c5";
 
         bool _is_quiet = true;
