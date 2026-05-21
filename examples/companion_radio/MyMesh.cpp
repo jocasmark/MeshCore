@@ -469,7 +469,7 @@ void MyMesh::queueMessage(const ContactInfo &from, uint8_t txt_type, mesh::Packe
     if (!_serial->isConnected()) {
       _ui->notify(UIEventType::ack);
     } else {
-      notify(UIEventType::contactMessage);
+      _ui->notify(UIEventType::contactMessage);
     }
   }
 #endif
