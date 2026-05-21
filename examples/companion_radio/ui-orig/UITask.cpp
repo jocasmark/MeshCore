@@ -102,7 +102,13 @@ switch(t){
     buzzer.play("kerplop:b=210,o=3,d=4:8d5,8e5,8g5,8d5,b5,8p,b5,8p,2a5,p");
     break;
   case UIEventType::ack:
-    buzzer.play("ack:d=8,o=6,b=200:b,e7");
+    buzzer.play("ack:d=4,o=5,b=180:8d5,8b,8c#6");
+    break;
+  case UIEventType::deack:
+    buzzer.play("deack:d=4,o=5,b=180:8c#6,8b,8d5");
+    break;
+  case UIEventType::advert:
+    buzzer.play("advert:d=16,o=5,b=180:4c#6,8c#6,8b,8a,4g,4g,8a,4b,4a,4p");
     break;
   case UIEventType::roomMessage:
   case UIEventType::newContactMessage:
@@ -385,7 +391,7 @@ void UITask::handleButtonDoublePress() {
   MESH_DEBUG_PRINTLN("UITask: double press triggered, sending advert");
   // ADVERT
   #ifdef PIN_BUZZER
-      notify(UIEventType::ack);
+      notify(UIEventType::advert);
   #endif
   if (the_mesh.advert()) {
     MESH_DEBUG_PRINTLN("Advert sent!");
@@ -406,6 +412,7 @@ void UITask::handleButtonTriplePress() {
       notify(UIEventType::ack);
       sprintf(_alert, "Buzzer: ON");
     } else {
+      notify(UIEventType::deack);
       buzzer.quiet(true);
       sprintf(_alert, "Buzzer: OFF");
     }
@@ -424,7 +431,7 @@ void UITask::handleButtonQuadruplePress() {
       if (strcmp(_sensors->getSettingName(i), "gps") == 0) {
         if (strcmp(_sensors->getSettingValue(i), "1") == 0) {
           _sensors->setSettingValue("gps", "0");
-          notify(UIEventType::ack);
+          notify(UIEventType::deack);
           sprintf(_alert, "GPS: Disabled");
         } else {
           _sensors->setSettingValue("gps", "1");

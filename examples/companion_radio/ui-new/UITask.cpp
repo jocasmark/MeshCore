@@ -608,7 +608,13 @@ switch(t){
     buzzer.play("kerplop:b=210,o=3,d=4:8d5,8e5,8g5,8d5,b5,8p,b5,8p,2a5,p");
     break;
   case UIEventType::ack:
-    buzzer.play("ack:d=8,o=6,b=200:b,e7");
+    buzzer.play("ack:d=4,o=5,b=180:8d5,8b,8c#6");
+    break;
+  case UIEventType::deack:
+    buzzer.play("deack:d=4,o=5,b=180:8c#6,8b,8d5");
+    break;
+  case UIEventType::advert:
+    buzzer.play("advert:d=16,o=5,b=180:4c#6,8c#6,8b,8a,4g,4g,8a,4b,4a,4p");
     break;
   case UIEventType::roomMessage:
   case UIEventType::newContactMessage:
@@ -905,7 +911,7 @@ void UITask::toggleGPS() {
         } else {
           _sensors->setSettingValue("gps", "1");
           _node_prefs->gps_enabled = 1;
-          notify(UIEventType::ack);
+          notify(UIEventType::deack);
         }
         the_mesh.savePrefs();
         showAlert(_node_prefs->gps_enabled ? "GPS: Enabled" : "GPS: Disabled", 800);
@@ -923,6 +929,7 @@ void UITask::toggleBuzzer() {
       buzzer.quiet(false);
       notify(UIEventType::ack);
     } else {
+      notify(UIEventType::deack);
       buzzer.quiet(true);
     }
     _node_prefs->buzzer_quiet = buzzer.isQuiet();
