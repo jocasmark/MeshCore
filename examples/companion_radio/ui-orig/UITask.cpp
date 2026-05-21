@@ -413,6 +413,7 @@ void UITask::handleButtonTriplePress() {
       sprintf(_alert, "Buzzer: ON");
     } else {
       notify(UIEventType::deack);
+      while (buzzer.isPlaying()) buzzer.loop(); // ensure deack sound plays before quieting
       buzzer.quiet(true);
       sprintf(_alert, "Buzzer: OFF");
     }
