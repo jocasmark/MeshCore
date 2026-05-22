@@ -110,6 +110,10 @@ switch(t){
   case UIEventType::advert:
     buzzer.play("advert:d=16,o=5,b=180:4c#6,8c#6,8b,8a,4g,4g,8a,4b,4a,4p");
     break;
+  case UIEventType::favoriteNearby:
+    // distinctive chime when a favourite contact is heard direct (0 hops)
+    buzzer.play("FavNear:d=8,o=6,b=200:c,e,g,c7,g,c7");
+    break;
   case UIEventType::roomMessage:
   case UIEventType::newContactMessage:
   case UIEventType::none:

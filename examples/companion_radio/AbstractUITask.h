@@ -21,7 +21,8 @@ enum class UIEventType {
     newContactMessage,
     ack,
     deack,
-    advert
+    advert,
+    favoriteNearby
 };
 
 class AbstractUITask {
