@@ -94,21 +94,22 @@ void UITask::notify(UIEventType t) {
 #if defined(PIN_BUZZER)
 switch(t){
   case UIEventType::contactMessage:
-    // Nokia
-    buzzer.play("MsgRcv3:d=4,o=5,b=180:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a");
+    // Zelda Secret
+    buzzer.play("MsgRcv3:d=16,o=6,b=100:g,f#,d#,a,g#,e,g#,4c7");
     break;
   case UIEventType::channelMessage:
-    // Never Gonna Give You Up
-    buzzer.play("kerplop:b=210,o=3,d=4:8d5,8e5,8g5,8d5,b5,8p,b5,8p,2a5,p");
+    //Default
+    buzzer.play("kerplop:d=16,o=6,b=120:32g#,32c#");
     break;
   case UIEventType::ack:
-    buzzer.play("ack:d=4,o=5,b=180:8d5,8b,8c#6");
+    buzzer.play("ack:d=4,o=5,b=700:8c,8d,8e,8f,8g,8a,8b,2c6");
     break;
   case UIEventType::deack:
-    buzzer.play("deack:d=4,o=5,b=180:8c#6,8b,8d5");
+    buzzer.play("deack:d=4,o=5,b=700:8c6,8b,8a,8g,8f,8e,8d,2c");
     break;
   case UIEventType::advert:
-    buzzer.play("advert:d=16,o=5,b=180:4c#6,8c#6,8b,8a,4g,4g,8a,4b,4a,4p");
+    // Never Gonna Give You Up
+    buzzer.play("advert:b=210,o=3,d=4:8d5,8e5,8g5,8d5,b5,8p,b5,8p,2a5,p");
     break;
   case UIEventType::roomMessage:
   case UIEventType::newContactMessage:
