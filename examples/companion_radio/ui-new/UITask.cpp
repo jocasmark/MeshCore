@@ -617,6 +617,10 @@ switch(t){
     // Never Gonna Give You Up
     buzzer.play("advert:b=210,o=3,d=4:8d5,8e5,8g5,8d5,b5,8p,b5,8p,2a5,p");
     break;
+  case UIEventType::favoriteNearby:
+    // distinctive chime when a favourite contact is heard direct (0 hops)
+    buzzer.play("FavNear:d=8,o=6,b=200:c,e,g,c7,g,c7");
+    break;
   case UIEventType::roomMessage:
   case UIEventType::newContactMessage:
   case UIEventType::none:

@@ -362,6 +362,13 @@ void MyMesh::onDiscoveredContact(ContactInfo &contact, bool is_new, uint8_t path
 #endif
   }
 
+#ifdef DISPLAY_CLASS
+  // Buzz when a favorite contact is heard directly (zero hops)
+  if (_ui && !is_new && (contact.flags & 0x01) && path_len == 0) {
+    _ui->notify(UIEventType::favoriteNearby);
+  }
+#endif
+
   // add inbound-path to mem cache
   if (path && mesh::Packet::isValidPathLen(path_len)) {  // check path is valid
     AdvertPath* p = advert_paths;
