@@ -363,8 +363,10 @@ void MyMesh::onDiscoveredContact(ContactInfo &contact, bool is_new, uint8_t path
   }
 
 #ifdef DISPLAY_CLASS
-  // Buzz when a favorite contact is heard directly (zero hops)
-  if (_ui && !is_new && (contact.flags & 0x01) && path_len == 0) {
+  // Buzz when a favorite client contact is heard directly (zero hops).
+  // Limited to ADV_TYPE_CHAT so repeaters/rooms/sensors don't trigger it.
+  if (_ui && !is_new && (contact.flags & 0x01) && path_len == 0
+      && contact.type == ADV_TYPE_CHAT) {
     _ui->notify(UIEventType::favoriteNearby);
   }
 #endif
