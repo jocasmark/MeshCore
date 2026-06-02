@@ -274,6 +274,45 @@ void UITask::renderCurrScreen() {
 
 void UITask::userLedHandler() {
 #ifdef PIN_STATUS_LED
+#ifdef STATUS_LED_BREATHE
+  // Soft PWM "breathing" pulse: ramp up to peak then back to 0, then a dark
+  // gap so it reads as a heartbeat rather than steady glow. Gap shortens
+  // when unread messages are waiting.
+  static uint32_t next_step = 0;
+  static int16_t  brightness = 0;
+  static int8_t   direction = 1;
+  static bool     in_gap = false;
+  static uint32_t gap_until = 0;
+
+  const uint8_t  step_amount = 4;     // brightness units per tick
+  const uint16_t step_ms     = 16;    // ~60Hz update
+  const uint8_t  peak        = 200;   // max duty (0..255)
+  const uint16_t gap_ms_idle = 3000;
+  const uint16_t gap_ms_msg  = 400;
+
+  uint32_t cur_time = millis();
+  if (in_gap) {
+    if (cur_time < gap_until) return;
+    in_gap = false;
+    next_step = cur_time;
+  }
+  if (cur_time < next_step) return;
+  next_step = cur_time + step_ms;
+
+  brightness += direction * step_amount;
+  if (brightness >= peak) {
+    brightness = peak;
+    direction = -1;
+  } else if (brightness <= 0) {
+    brightness = 0;
+    direction = 1;
+    in_gap = true;
+    gap_until = cur_time + (_msgcount > 0 ? gap_ms_msg : gap_ms_idle);
+  }
+
+  uint8_t pwm = (LED_STATE_ON != 0) ? (uint8_t)brightness : (uint8_t)(255 - brightness);
+  analogWrite(PIN_STATUS_LED, pwm);
+#else
   static int state = 0;
   static int next_change = 0;
   static int last_increment = 0;
@@ -294,6 +333,7 @@ void UITask::userLedHandler() {
     }
     digitalWrite(PIN_STATUS_LED, state == LED_STATE_ON);
   }
+#endif
 #endif
 }
 
