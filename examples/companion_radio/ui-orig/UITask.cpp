@@ -284,11 +284,11 @@ void UITask::userLedHandler() {
   static bool     in_gap = false;
   static uint32_t gap_until = 0;
 
-  const uint8_t  step_amount = 4;     // brightness units per tick
-  const uint16_t step_ms     = 16;    // ~60Hz update
-  const uint8_t  peak        = 200;   // max duty (0..255)
-  const uint16_t gap_ms_idle = 3000;
-  const uint16_t gap_ms_msg  = 400;
+  const uint8_t  step_amount = 8;     // brightness units per tick
+  const uint16_t step_ms     = 32;    // ~30Hz
+  const uint8_t  peak        = 128;   // max duty (0..255)
+  const uint16_t gap_ms_idle = 6000;  // idle gap
+  const uint16_t gap_ms_msg  = 600;  // message gap
 
   uint32_t cur_time = millis();
   if (in_gap) {
