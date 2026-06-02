@@ -250,11 +250,14 @@ void loop() {
 #endif
   rtc_clock.tick();
 
+#if defined(NRF52_PLATFORM) && !defined(PIN_STATUS_LED)
+  // Boards with a software-blinked PIN_STATUS_LED need the loop to keep
+  // polling so UITask::userLedHandler() can toggle it; sleeping here freezes
+  // the LED until the next external interrupt.
   if (!the_mesh.hasPendingWork()) {
-#if defined(NRF52_PLATFORM)
     board.sleep(0); // nrf ignores seconds param, sleeps whenever possible
-#endif
   }
+#endif
 
 #if defined(ESP32) && defined(WIFI_SSID)
   // Safely attempt to reconnect every 10 seconds if flagged
