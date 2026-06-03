@@ -202,6 +202,7 @@ public:
   void updateFloodAdvertTimer() override;
 
   void setLoggingOn(bool enable) override { _logging = enable; }
+  bool isLoggingOn() const { return _logging; }
 
   void eraseLogFile() override {
     _fs->remove(PACKET_LOG_FILE);

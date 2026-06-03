@@ -2,6 +2,13 @@
 #include <Arduino.h>
 #include <helpers/CommonCLI.h>
 
+#if defined(ESP32) && defined(WIFI_SSID)
+  #include <WiFi.h>
+  #ifndef TCP_PORT
+    #define TCP_PORT 5000
+  #endif
+#endif
+
 #ifndef USER_BTN_PRESSED
 #define USER_BTN_PRESSED LOW
 #endif
@@ -89,6 +96,22 @@ void UITask::renderCurrScreen() {
     _display->setCursor(0, 30);
     sprintf(tmp, "BW: %03.2f CR: %d", _node_prefs->bw, _node_prefs->cr);
     _display->print(tmp);
+
+#if defined(ESP32) && defined(WIFI_SSID)
+    _display->setColor(DisplayDriver::LIGHT);
+    if (WiFi.status() == WL_CONNECTED) {
+      _display->setCursor(0, 45);
+      snprintf(tmp, sizeof(tmp), "WiFi: %s", WiFi.SSID().c_str());
+      _display->print(tmp);
+      _display->setCursor(0, 55);
+      snprintf(tmp, sizeof(tmp), "IP:   %s",
+               WiFi.localIP().toString().c_str());
+      _display->print(tmp);
+    } else {
+      _display->setCursor(0, 45);
+      _display->print("WiFi: connecting...");
+    }
+#endif
   }
 }
 
