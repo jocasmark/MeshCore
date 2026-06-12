@@ -115,6 +115,29 @@ This document provides an overview of CLI commands that can be sent to MeshCore 
 
 ---
 
+### Ping a neighbor (zero-hop trace-route)
+
+**Usage:**
+- `neighbor.ping`
+- `neighbor.ping <pubkey_prefix>`
+
+**Parameters:**
+- `pubkey_prefix`: The public key (or a short hex prefix) of a neighbor to ping. When omitted, every known neighbor is pinged.
+
+**Note:** Sends a single-hop `TRACE` packet to the neighbor, which appends the SNR at which it heard us and bounces it back. This measures link quality in **both** directions.
+
+**Note:** Results are returned **asynchronously** (typically within a few seconds), one line per neighbor, in the form:
+
+```
+{pubkey-prefix} us->them={snr_dB} them->us={snr_dB}
+```
+
+where `us->them` is the SNR at which the neighbor received our packet, and `them->us` is the SNR at which we received the neighbor's reply.
+
+**Note:** Throttled to a maximum of 8 pings per minute, with up to 4 pings in flight at once. Only neighbors already in the [neighbors](#list-nearby-neighbors) list can be pinged; run [discover.neighbors](#discover-zero-hop-neighbors) first if the list is stale.
+
+---
+
 ## Statistics
 
 ### Clear Stats

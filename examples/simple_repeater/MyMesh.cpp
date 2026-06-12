@@ -723,7 +723,9 @@ void MyMesh::onPeerDataRecv(mesh::Packet *packet, uint8_t type, int sender_idx, 
       if (is_retry) {
         *reply = 0;
       } else {
+        _cli_reply_client = client;   // allow async results (e.g. neighbor.ping) to reach this client
         handleCommand(sender_timestamp, command, reply);
+        _cli_reply_client = NULL;
       }
       int text_len = strlen(reply);
       if (text_len > 0) {
@@ -845,6 +847,116 @@ void MyMesh::sendNodeDiscoverReq() {
   }
 }
 
+// Format an SNR value (stored as SNR*4) into a string like "-7.25", using only
+// integer math so it works on platforms without printf float support.
+static void formatSnrQuarters(char* buf, int snr_q4) {
+  const char* sign = (snr_q4 < 0) ? "-" : "";
+  int v = (snr_q4 < 0) ? -snr_q4 : snr_q4;
+  sprintf(buf, "%s%d.%02d", sign, v / 4, (v % 4) * 25);
+}
+
+int MyMesh::startNeighbourPing(const uint8_t* prefix, int prefix_len, bool to_serial, ClientInfo* client) {
+#if MAX_NEIGHBOURS
+  int started = 0;
+  for (int i = 0; i < MAX_NEIGHBOURS; i++) {
+    NeighbourInfo* neighbour = &neighbours[i];
+    if (neighbour->heard_timestamp == 0) continue;   // empty slot
+
+    // when a prefix is given, only ping matching neighbour(s)
+    if (prefix_len > 0 && memcmp(neighbour->id.pub_key, prefix, prefix_len) != 0) continue;
+
+    // find a free ping context slot
+    PingContext* ctx = NULL;
+    for (int j = 0; j < PING_MAX_PENDING; j++) {
+      if (!ping_ctx[j].active) { ctx = &ping_ctx[j]; break; }
+    }
+    if (ctx == NULL) break;   // no free slots, stop here
+
+    uint32_t tag;
+    getRNG()->random((uint8_t*)&tag, 4);
+    auto pkt = createTrace(tag, 0, 0);  // auth_code=0, flags=0 (path hash size = 1 byte)
+    if (pkt == NULL) break;             // packet pool empty
+
+    uint8_t path[1] = { neighbour->id.pub_key[0] };  // single-hop path: just the neighbour's hash
+    sendDirect(pkt, path, 1, SERVER_RESPONSE_DELAY);
+
+    ctx->active = true;
+    ctx->tag = tag;
+    memcpy(ctx->target_prefix, neighbour->id.pub_key, sizeof(ctx->target_prefix));
+    ctx->expiry = futureMillis(8000);
+    ctx->to_serial = to_serial;
+    ctx->client = client;
+    started++;
+  }
+  return started;
+#else
+  return 0;
+#endif
+}
+
+void MyMesh::deliverPingResult(PingContext& ctx, const char* line) {
+  if (ctx.to_serial) {
+    Serial.print("  -> "); Serial.println(line);
+  }
+  if (ctx.client != NULL) {
+    // send the result back to the mesh-CLI client as an asynchronous CLI text message
+    uint8_t temp[166];
+    int text_len = strlen(line);
+    if (text_len > (int)sizeof(temp) - 5) text_len = sizeof(temp) - 5;
+
+    uint32_t timestamp = getRTCClock()->getCurrentTimeUnique();
+    memcpy(temp, &timestamp, 4);          // blob to help packet-hash uniqueness
+    temp[4] = (TXT_TYPE_CLI_DATA << 2);
+    memcpy(&temp[5], line, text_len);
+
+    auto reply = createDatagram(PAYLOAD_TYPE_TXT_MSG, ctx.client->id, ctx.client->shared_secret, temp, 5 + text_len);
+    if (reply) {
+      if (ctx.client->out_path_len == OUT_PATH_UNKNOWN) {
+        sendFlood(reply, CLI_REPLY_DELAY_MILLIS, _prefs.path_hash_mode + 1);
+      } else {
+        sendDirect(reply, ctx.client->out_path, ctx.client->out_path_len, CLI_REPLY_DELAY_MILLIS);
+      }
+    }
+  }
+}
+
+void MyMesh::expirePingContexts() {
+  for (int i = 0; i < PING_MAX_PENDING; i++) {
+    if (ping_ctx[i].active && millisHasNowPassed(ping_ctx[i].expiry)) {
+      ping_ctx[i].active = false;
+    }
+  }
+}
+
+void MyMesh::onTraceRecv(mesh::Packet* packet, uint32_t tag, uint32_t auth_code, uint8_t flags,
+                         const uint8_t* path_snrs, const uint8_t* path_hashes, uint8_t path_len) {
+  uint8_t path_sz = flags & 0x03;
+  uint8_t num_hops = path_len >> path_sz;
+
+  // match a pending ping by tag (we only initiate single-hop traces)
+  for (int i = 0; i < PING_MAX_PENDING; i++) {
+    PingContext& ctx = ping_ctx[i];
+    if (!ctx.active || ctx.tag != tag) continue;
+
+    char hex[13];
+    mesh::Utils::toHex(hex, ctx.target_prefix, sizeof(ctx.target_prefix));
+
+    char line[80];
+    if (num_hops >= 1) {
+      char up[12], down[12];
+      formatSnrQuarters(up, (int8_t)path_snrs[0]);             // how the neighbour heard us (us->them)
+      formatSnrQuarters(down, (int)(packet->getSNR() * 4));    // how we heard the neighbour (them->us)
+      sprintf(line, "%s us->them=%s them->us=%s", hex, up, down);
+    } else {
+      sprintf(line, "%s no-response", hex);
+    }
+
+    deliverPingResult(ctx, line);
+    ctx.active = false;
+    return;
+  }
+}
+
 MyMesh::MyMesh(mesh::MainBoard &board, mesh::Radio &radio, mesh::MillisecondClock &ms, mesh::RNG &rng,
                mesh::RTCClock &rtc, mesh::MeshTables &tables)
     : mesh::Mesh(radio, ms, rng, rtc, *new StaticPoolPacketManager(32), tables),
@@ -852,7 +964,8 @@ MyMesh::MyMesh(mesh::MainBoard &board, mesh::Radio &radio, mesh::MillisecondCloc
       _cli(board, rtc, sensors, region_map, acl, &_prefs, this),
       telemetry(MAX_PACKET_PAYLOAD - 4),
       discover_limiter(4, 120),  // max 4 every 2 minutes
-      anon_limiter(4, 180)   // max 4 every 3 minutes
+      anon_limiter(4, 180),   // max 4 every 3 minutes
+      ping_limiter(8, 60)   // max 8 every minute
 #if defined(WITH_RS232_BRIDGE)
       , bridge(&_prefs, WITH_RS232_BRIDGE, _mgr, &rtc)
 #endif
@@ -920,6 +1033,9 @@ MyMesh::MyMesh(mesh::MainBoard &board, mesh::Radio &radio, mesh::MillisecondCloc
 
   pending_discover_tag = 0;
   pending_discover_until = 0;
+
+  memset(ping_ctx, 0, sizeof(ping_ctx));
+  _cli_reply_client = NULL;
 
   memset(default_scope.key, 0, sizeof(default_scope.key));
 }
@@ -1257,6 +1373,41 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
       sendNodeDiscoverReq();
       strcpy(reply, "OK - Discover sent");
     }
+  } else if (memcmp(command, "neighbor.ping", 13) == 0) {
+#if MAX_NEIGHBOURS
+    const char* arg = command + 13;
+    while (*arg == ' ') arg++;   // skip leading spaces, optional pubkey prefix follows
+
+    uint8_t prefix[PUB_KEY_SIZE];
+    int prefix_len = 0;
+    if (*arg != 0) {
+      int hex_len = strlen(arg);
+      if ((hex_len & 1) != 0 || hex_len > PUB_KEY_SIZE * 2 || !mesh::Utils::fromHex(prefix, hex_len / 2, arg)) {
+        strcpy(reply, "Err - bad pubkey prefix");
+        return;
+      }
+      prefix_len = hex_len / 2;
+    }
+
+    if (!ping_limiter.allow(getRTCClock()->getCurrentTime())) {
+      strcpy(reply, "Err - too busy, try again later");
+      return;
+    }
+
+    // serial console uses sender_timestamp 0; mesh-CLI clients are tracked via _cli_reply_client
+    bool to_serial = (sender_timestamp == 0);
+    ClientInfo* client = to_serial ? NULL : _cli_reply_client;
+
+    int started = startNeighbourPing(prefix, prefix_len, to_serial, client);
+    if (started == 0) {
+      strcpy(reply, "Err - no matching neighbor (or too many pending)");
+    } else {
+      // results arrive asynchronously (each as a separate line) within a few seconds
+      sprintf(reply, "OK - ping sent to %d neighbor%s", started, started == 1 ? "" : "s");
+    }
+#else
+    strcpy(reply, "Err - neighbors not supported on this build");
+#endif
   } else{
     _cli.handleCommand(sender_timestamp, command, reply);  // common CLI commands
   }
@@ -1268,6 +1419,8 @@ void MyMesh::loop() {
 #endif
 
   mesh::Mesh::loop();
+
+  expirePingContexts();
 
   if (next_flood_advert && millisHasNowPassed(next_flood_advert)) {
     mesh::Packet *pkt = createSelfAdvert();

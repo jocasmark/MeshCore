@@ -68,6 +68,21 @@ struct NeighbourInfo {
   int8_t snr; // multiplied by 4, user should divide to get float value
 };
 
+#ifndef PING_MAX_PENDING
+  #define PING_MAX_PENDING      4
+#endif
+
+// A pending zero-hop neighbour ping (trace-route). The result is delivered
+// asynchronously via onTraceRecv() once the neighbour retransmits the TRACE.
+struct PingContext {
+  bool active;
+  uint32_t tag;               // random tag carried in the TRACE packet
+  uint8_t target_prefix[6];   // pub_key prefix of the pinged neighbour (for display)
+  unsigned long expiry;       // millis() deadline after which the slot is freed
+  bool to_serial;             // true if the request came from the serial console
+  ClientInfo* client;         // non-NULL if the result must be sent over the mesh CLI
+};
+
 #ifndef FIRMWARE_BUILD_DATE
   #define FIRMWARE_BUILD_DATE   "6 Jun 2026"
 #endif
@@ -99,10 +114,13 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   RegionEntry* recv_pkt_region;
   TransportKey default_scope;
   RateLimiter discover_limiter, anon_limiter;
+  RateLimiter ping_limiter;
   uint32_t pending_discover_tag;
   unsigned long pending_discover_until;
   bool region_load_active;
   unsigned long dirty_contacts_expiry;
+  PingContext ping_ctx[PING_MAX_PENDING];
+  ClientInfo* _cli_reply_client;   // set while handling a mesh-CLI command, else NULL
 #if MAX_NEIGHBOURS
   NeighbourInfo neighbours[MAX_NEIGHBOURS];
 #endif
@@ -120,6 +138,9 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
 #endif
 
   void putNeighbour(const mesh::Identity& id, uint32_t timestamp, float snr);
+  int startNeighbourPing(const uint8_t* prefix, int prefix_len, bool to_serial, ClientInfo* client);
+  void deliverPingResult(PingContext& ctx, const char* line);
+  void expirePingContexts();
   uint8_t handleLoginReq(const mesh::Identity& sender, const uint8_t* secret, uint32_t sender_timestamp, const uint8_t* data, bool is_flood);
   uint8_t handleAnonRegionsReq(const mesh::Identity& sender, uint32_t sender_timestamp, const uint8_t* data);
   uint8_t handleAnonOwnerReq(const mesh::Identity& sender, uint32_t sender_timestamp, const uint8_t* data);
@@ -172,6 +193,7 @@ protected:
   void onPeerDataRecv(mesh::Packet* packet, uint8_t type, int sender_idx, const uint8_t* secret, uint8_t* data, size_t len) override;
   bool onPeerPathRecv(mesh::Packet* packet, int sender_idx, const uint8_t* secret, uint8_t* path, uint8_t path_len, uint8_t extra_type, uint8_t* extra, uint8_t extra_len) override;
   void onControlDataRecv(mesh::Packet* packet) override;
+  void onTraceRecv(mesh::Packet* packet, uint32_t tag, uint32_t auth_code, uint8_t flags, const uint8_t* path_snrs, const uint8_t* path_hashes, uint8_t path_len) override;
 
   void sendFloodReply(mesh::Packet* packet, unsigned long delay_millis, uint8_t path_hash_size);
 
