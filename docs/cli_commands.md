@@ -286,6 +286,20 @@ where `us->them` is the SNR at which the neighbor received our packet, and `them
 
 ---
 
+#### View or change the LoRa FEM receive-path gain state on supported boards
+**Usage:**
+- `get radio.fem.rxgain`
+- `set radio.fem.rxgain <state>`
+
+**Parameters:**
+- `state`: `on`|`off`
+
+**Notes:**
+- This controls the external LoRa FEM receive-path LNA where the board supports it.
+- This is separate from `radio.rxgain`, which controls the radio chip receive gain mode.
+
+---
+
 ### System
 
 #### View or change this node's name
@@ -411,6 +425,11 @@ where `us->them` is the SNR at which the neighbor received our packet, and `them
 
 #### View this node's public key
 **Usage:** `get public.key`
+
+---
+
+#### View this node's firmware version
+**Usage:** `ver`
 
 ---
 
@@ -579,6 +598,20 @@ where `us->them` is the SNR at which the neighbor received our packet, and `them
 - `value`: Interference threshold value
 
 **Default:** `0.0`
+
+---
+
+#### Enable or disable hardware Channel Activity Detection (CAD)
+**Usage:**
+- `get cad`
+- `set cad <on|off>`
+
+**Description:** When enabled, the radio performs a hardware Channel Activity Detection scan before transmitting and defers if the channel is busy. Runs independently of `int.thresh` — either, both, or none may be active.
+
+**Parameters:**
+- `on|off`: Enable or disable hardware CAD
+
+**Default:** `off`
 
 ---
 
