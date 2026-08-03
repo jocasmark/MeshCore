@@ -948,11 +948,11 @@ void UITask::toggleGPS() {
         if (strcmp(_sensors->getSettingValue(i), "1") == 0) {
           _sensors->setSettingValue("gps", "0");
           _node_prefs->gps_enabled = 0;
-          notify(UIEventType::ack);
+          notify(UIEventType::deack);
         } else {
           _sensors->setSettingValue("gps", "1");
           _node_prefs->gps_enabled = 1;
-          notify(UIEventType::deack);
+          notify(UIEventType::ack);
         }
         the_mesh.savePrefs();
         showAlert(_node_prefs->gps_enabled ? "GPS: Enabled" : "GPS: Disabled", 800);
