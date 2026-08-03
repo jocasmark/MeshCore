@@ -94,8 +94,12 @@ void UITask::notify(UIEventType t) {
 #if defined(PIN_BUZZER)
 switch(t){
   case UIEventType::contactMessage:
-    // Nokia
-    buzzer.play("MsgRcv3:d=4,o=5,b=180:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a");
+    // Nokia riff (shortened), for messages that were relayed (multi-hop)
+    buzzer.play("MsgRcv3:d=4,o=5,b=200:8e6,8d6,f#,g#");
+    break;
+  case UIEventType::contactMessageDirect:
+    // quick bright chime for messages heard directly (0 hops)
+    buzzer.play("MsgDirect:d=8,o=6,b=220:c,e,g");
     break;
   case UIEventType::channelMessage:
     // Never Gonna Give You Up
@@ -405,6 +409,36 @@ void UITask::loop() {
       _display->turnOff();
     }
   }
+
+#ifdef AUTO_SHUTDOWN_MILLIVOLTS
+  if (millis() > next_batt_chck) {
+    uint16_t milliVolts = getBattMilliVolts();
+    if (milliVolts > 0 && milliVolts < AUTO_SHUTDOWN_MILLIVOLTS) {
+      if (!board.isExternalPowered()) {
+#ifdef PIN_BUZZER
+        // boards without a display (or with it off) still need an audible warning
+        buzzer.play("LowBatt:d=4,o=4,b=120:8c,8p,8c,8p,8c");
+        {
+          uint32_t buzzer_timer = millis(); // fail-safe, in case it never reports done
+          while (buzzer.isPlaying() && (millis() - buzzer_timer) < 2500)
+            buzzer.loop();
+        }
+#endif
+        if (_display != NULL) {
+          _display->startFrame();
+          _display->setTextSize(2);
+          _display->setColor(UIColor::warning_txt);
+          _display->drawTextCentered(_display->width() / 2, 20, "Low Battery.");
+          _display->drawTextCentered(_display->width() / 2, 40, "Shutting Down!");
+          _display->endFrame();
+          if (_display->isEink() == false) { delay(3000); }
+        }
+        shutdown();
+      }
+    }
+    next_batt_chck = millis() + 8000;
+  }
+#endif
 }
 
 void UITask::handleButtonAnyPress() {

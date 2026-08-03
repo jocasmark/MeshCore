@@ -30,6 +30,7 @@ class UITask : public AbstractUITask {
   bool _need_refresh = true;
   bool _displayWasOn = false;  // Track display state before button press
   unsigned long ui_started_at;
+  unsigned long next_batt_chck;
 
   // Button handlers
 #ifdef PIN_USER_BTN
@@ -57,6 +58,7 @@ public:
   UITask(mesh::MainBoard* board, MultiSerialInterface* serial) : AbstractUITask(board, serial), _display(NULL), _sensors(NULL) {
       _next_refresh = 0;
       ui_started_at = 0;
+      next_batt_chck = 0;
   }
   void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs);
 

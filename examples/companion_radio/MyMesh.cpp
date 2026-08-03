@@ -480,6 +480,9 @@ void MyMesh::queueMessage(const ContactInfo &from, uint8_t txt_type, mesh::Packe
     _ui->newMsg(path_len, from.name, text, offline_queue_len);
     if (!_serial->isConnected()) {
       _ui->notify(UIEventType::ack);
+    } else if (path_len == 0xFF || path_len == 0) {
+      // delivered via a direct path, or heard directly (0 hops)
+      _ui->notify(UIEventType::contactMessageDirect);
     } else {
       _ui->notify(UIEventType::contactMessage);
     }

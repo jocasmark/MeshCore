@@ -477,8 +477,12 @@ void UITask::notify(UIEventType t) {
 #if defined(PIN_BUZZER)
 switch(t){
   case UIEventType::contactMessage:
-    // gemini's pick
+    // gemini's pick, for messages that were relayed (multi-hop)
     buzzer.play("MsgRcv3:d=4,o=6,b=200:32e,32g,32b,16c7");
+    break;
+  case UIEventType::contactMessageDirect:
+    // quick chime for messages heard directly (0 hops)
+    buzzer.play("MsgDirect:d=16,o=7,b=200:32c,32g");
     break;
   case UIEventType::channelMessage:
     buzzer.play("kerplop:d=16,o=6,b=120:32g#,32c#");

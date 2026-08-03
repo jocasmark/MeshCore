@@ -623,8 +623,12 @@ void UITask::notify(UIEventType t) {
 #if defined(PIN_BUZZER)
 switch(t){
   case UIEventType::contactMessage:
-    // Nokia
-    buzzer.play("MsgRcv3:d=4,o=5,b=180:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a");
+    // Nokia riff (shortened), for messages that were relayed (multi-hop)
+    buzzer.play("MsgRcv3:d=4,o=5,b=200:8e6,8d6,f#,g#");
+    break;
+  case UIEventType::contactMessageDirect:
+    // quick bright chime for messages heard directly (0 hops)
+    buzzer.play("MsgDirect:d=8,o=6,b=220:c,e,g");
     break;
   case UIEventType::channelMessage:
     // Never Gonna Give You Up

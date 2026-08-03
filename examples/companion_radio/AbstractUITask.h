@@ -16,6 +16,7 @@
 enum class UIEventType {
     none,
     contactMessage,
+    contactMessageDirect,
     channelMessage,
     roomMessage,
     newContactMessage,
