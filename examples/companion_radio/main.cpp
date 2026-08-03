@@ -256,10 +256,6 @@ void loop() {
   external_watchdog.loop();
 #endif
 
-#ifdef ETHERNET_ENABLED
-  serial_interface.loop();
-#endif
-
 #if defined(NRF52_PLATFORM) && !defined(PIN_STATUS_LED)
   // Boards with a software-blinked PIN_STATUS_LED need the loop to keep
   // polling so UITask::userLedHandler() can toggle it; sleeping here freezes
